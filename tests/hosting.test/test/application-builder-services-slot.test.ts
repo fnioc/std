@@ -1,6 +1,6 @@
 import { Builder } from '@rhombus-std/di';
 import { Type } from '@rhombus-std/primitives';
-// The application builder's services slot (§114). `HostApplicationBuilder`
+// The application builder's services slot. `HostApplicationBuilder`
 // exposes `services` as ONE mutable slot over an immutable manifest chain, and
 // hands that same slot to its `logging` and `metrics` sub-builders. This suite
 // pins the property that fell out of the immutable-manifest change: every
@@ -8,7 +8,7 @@ import { Type } from '@rhombus-std/primitives';
 //
 // The failure this guards against is SILENT. Give each sub-builder its own copy
 // of the manifest instead of a shared slot and everything still typechecks and
-// runs — the registrations simply never reach the container.
+// runs — the registrations simply never reach the provider.
 
 import { Host } from '@rhombus-std/hosting';
 import type { ILogger, ILoggerProvider } from '@rhombus-std/logging.core';
@@ -36,7 +36,7 @@ test('builder.logging registrations reach the manifest build() reads', () => {
 
   // The chain is immutable, so this only holds because `logging` writes through
   // the SAME slot `builder.services` reads.
-  const providers: ILoggerProvider[] = Builder.withServices(() => builder.services).build().resolve(Type.array(LOGGER_PROVIDER_TYPE));
+  const providers = Builder.withServices(() => builder.services).build().resolve(Type.array(LOGGER_PROVIDER_TYPE)) as ILoggerProvider[];
   expect(providers).toContain(marker);
 });
 

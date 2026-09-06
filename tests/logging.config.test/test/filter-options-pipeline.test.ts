@@ -35,7 +35,7 @@ function filterOptionsFor(config: IConfigRoot): IOptions<LoggerFilterOptions> {
   const builder = new LoggingBuilder(Manifest.empty<unknown>());
   builder.addConfig(config);
   const provider = Builder.withServices(() => builder.services).build();
-  const options: IOptions<LoggerFilterOptions> = provider.resolve(FILTER_OPTIONS_TYPE);
+  const options = provider.resolve(FILTER_OPTIONS_TYPE) as IOptions<LoggerFilterOptions>;
   return options;
 }
 
@@ -73,7 +73,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
     config.set('LogLevel:Default', 'Error');
 
     const provider = Builder.withServices(() => builder.services).build();
-    const options: IOptions<LoggerFilterOptions> = provider.resolve(FILTER_OPTIONS_TYPE);
+    const options = provider.resolve(FILTER_OPTIONS_TYPE) as IOptions<LoggerFilterOptions>;
     expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Error);
   });
 
@@ -112,7 +112,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
     LoggingBuilderConfigAugmentations.addConfig.call(builder, config);
 
     const provider = Builder.withServices(() => builder.services).build();
-    const options: IOptions<LoggerFilterOptions> = provider.resolve(FILTER_OPTIONS_TYPE);
+    const options = provider.resolve(FILTER_OPTIONS_TYPE) as IOptions<LoggerFilterOptions>;
     expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Debug);
   });
 });

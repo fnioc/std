@@ -1,17 +1,17 @@
-// THE ERROR TAXONOMY, STAGED — every failure the container can raise, provoked
+// THE ERROR TAXONOMY, STAGED — every failure a service provider can raise, provoked
 // on purpose.
 //
 // The classifier is not in this file, and its absence is the lesson. `diagnose`
 // lives in `@rhombus-std/examples.lib.without-transformer`, because every class
 // it branches on is a `@rhombus-std/di.core` export: a library can name the whole
-// taxonomy and read what the container threw without ever referencing the
+// taxonomy and read what a provider threw without ever referencing the
 // engine. A library references the abstractions package; only an entry point
 // references the engine.
 //
 // What is HERE is the other half. Provoking a failure takes a manifest, a
 // `build()` and a resolve — the composition root's verbs, and the reason these
-// stagings are written at an entry point. Each one is a container built to fail
-// in exactly one way; they are separate containers on purpose, because a graph
+// stagings are written at an entry point. Each one is a provider built to fail
+// in exactly one way; they are separate providers on purpose, because a graph
 // with two holes reports whichever it meets first, which is fine for an operator
 // and useless for a reader.
 //
@@ -63,7 +63,7 @@ const AUDIT_TYPE = Type.from('selfcheck:IAuditLog');
 
 // ── the staged failures ──────────────────────────────────────────────────────
 
-/** A container whose one registration names a dependency nobody supplies. */
+/** A service manifest whose one registration names a dependency nobody supplies. */
 function withUnsatisfiableStore(): Manifest<unknown> {
   return Manifest.empty<unknown>().add(STORE_TYPE, BrokenStore, Type.ctor(STORE_TYPE, [[CONNECTION_TYPE]]), 'singleton');
 }
@@ -108,7 +108,7 @@ export function* demonstrateErrors(): Generator<string> {
 
   // ── resolution time ────────────────────────────────────────────────────────
   //
-  // The same broken container, built WITHOUT the eager pass: it comes up fine
+  // The same broken provider, built WITHOUT the eager pass: it comes up fine
   // and answers the first request that needs the missing piece. Which of the two
   // you want is a deployment question — fail at startup, or stay up and answer
   // only the requests that touch the working part.
@@ -138,7 +138,7 @@ export function* demonstrateErrors(): Generator<string> {
   // re-exports the same classes rather than declaring its own, so there is one
   // runtime identity per class and the `instanceof` below holds no matter which
   // specifier a caller reached them through. A consumer that does not want to
-  // enumerate the taxonomy catches `DiError` and knows it has caught a container
+  // enumerate the taxonomy catches `DiError` and knows it has caught an engine
   // problem rather than swallowed a bug in its own code.
   yield `every failure above shares one root: ${new ManifestValidationError([]) instanceof DiError}`;
   yield `something else entirely: ${diagnose(new TypeError('not ours'))}`;

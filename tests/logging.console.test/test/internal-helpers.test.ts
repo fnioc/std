@@ -1,6 +1,6 @@
 // White-box tests for the internal helpers — the control-character sanitizer,
 // the timestamp token formatter, and the ANSI escape-code tables — via the
-// library's `internal/*` subpath (docs §7/§40).
+// library's `internal/*` subpath.
 
 import { ConsoleColor, DEFAULT_BACKGROUND_COLOR, DEFAULT_FOREGROUND_COLOR, getBackgroundColorEscapeCode, getForegroundColorEscapeCode } from '@rhombus-std/logging.console/private/ConsoleColor';
 import { ConsoleControlCharacterSanitizer } from '@rhombus-std/logging.console/private/ConsoleControlCharacterSanitizer';

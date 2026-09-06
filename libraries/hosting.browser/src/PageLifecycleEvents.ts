@@ -17,7 +17,7 @@ export type PageLifecyclePhase = 'visible' | 'hidden' | 'frozen' | 'terminated';
  * The injectable page-lifecycle bridge, registered under
  * {@link import("./types").PAGE_LIFECYCLE_EVENTS_TYPE}. Its listeners attach
  * eagerly at construction, so no transition is missed before a subscriber
- * arrives. Registered as an unowned value — the container never disposes it,
+ * arrives. Registered as an unowned value — the provider never disposes it,
  * so the {@link BrowserLifetime} it is handed to detaches it on `stop`/dispose.
  */
 export class PageLifecycleEvents implements Disposable {

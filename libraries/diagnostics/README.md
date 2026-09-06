@@ -17,9 +17,9 @@ bun add @rhombus-std/diagnostics @rhombus-std/di.core @rhombus-std/di
 
 `@rhombus-std/di.core` is a peer dependency — install it alongside.
 `@rhombus-std/di` (the concrete registration engine) is what turns a manifest
-into a resolvable container; `@rhombus-std/diagnostics` doesn't depend on it
+into a resolvable provider; `@rhombus-std/diagnostics` doesn't depend on it
 itself, since `getMetricsManifest`/`getTracingManifest` only ever hand you a
-manifest to merge, never a container.
+manifest to merge, never a provider.
 
 ## Usage
 
@@ -95,7 +95,7 @@ underlying configuration reloads — no manual re-subscription needed.
 and the builder interfaces; on its `@rhombus-std/di.core` peer for the
 `Manifest` a caller merges `getMetricsManifest`/`getTracingManifest`'s result
 into (and on `@rhombus-std/di` to turn that manifest into a resolvable
-container); and on [`@rhombus-std/options`](../options/README.md) and
+provider); and on [`@rhombus-std/options`](../options/README.md) and
 [`@rhombus-std/options.augmentations`](../options.augmentations/README.md) for the
 `IOptions<T>` accessor and configuration-reload wiring. Install
 [`@rhombus-std/config`](../config/README.md) alongside it if you want to

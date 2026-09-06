@@ -10,7 +10,7 @@ import { baseFactoryType } from './option-types.js';
 const hole = Type.generic('$T');
 
 /**
- * Ensures the container carries the single open `IOptions<$T>` registration,
+ * Ensures the manifest carries the single open `IOptions<$T>` registration,
  * appending it only the first time.
  *
  * @remarks

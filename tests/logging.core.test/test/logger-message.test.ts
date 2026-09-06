@@ -17,7 +17,7 @@ function recordingLogger(enabled = true): { logger: ILogger; written: Written[];
   const written: Written[] = [];
   const scopes: unknown[] = [];
   // Partial ILogger double — only the primitives this test exercises; cast past
-  // the merged wrapper members (§80) it never calls.
+  // the merged wrapper members it never calls.
   const logger = {
     log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined, formatter: (state: TState, error: Error | undefined) => string): void {
       written.push({ logLevel, eventId, message: formatter(state, error), error });

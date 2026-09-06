@@ -3,7 +3,7 @@
 **The contracts a long-running application host is built from.**
 
 This package defines what a "host" is: the object that owns your service
-container, starts and stops your background work, and tracks the
+provider, starts and stops your background work, and tracks the
 application's lifetime — plus the smaller pieces (a hosted service, an
 environment, a builder) a host is assembled out of. It ships no running
 implementation; it's the shared vocabulary a host runtime and its consumers
@@ -20,7 +20,7 @@ bun add @rhombus-std/hosting.core @rhombus-std/di.core @rhombus-std/di @rhombus-
 `@rhombus-std/diagnostics.core`, `@rhombus-std/fileproviders.core`, and
 `@rhombus-std/primitives` — bun installs those automatically as regular
 dependencies. `@rhombus-std/di` is what turns a manifest into a resolvable
-container; this package doesn't depend on it itself, since
+provider; this package doesn't depend on it itself, since
 `getHostedServiceManifest` only ever hands you a manifest to merge.
 
 Importing this package installs the `IHost` / `IHostBuilder` /
@@ -104,7 +104,7 @@ plain interface. Both forms do exactly the same thing.
 ## How it fits
 
 `@rhombus-std/hosting.core` is the abstractions layer for hosting: it depends
-on [`@rhombus-std/di.core`](../di.core/README.md) for the service container
+on [`@rhombus-std/di.core`](../di.core/README.md) for the service provider
 interfaces it threads through builders and services,
 [`@rhombus-std/config.core`](../config.core/README.md) for the configuration
 shape a `HostBuilderContext` carries, [`@rhombus-std/logging.core`](../logging.core/README.md)

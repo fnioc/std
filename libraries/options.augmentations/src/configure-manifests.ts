@@ -18,7 +18,7 @@ import { changeTokenSourceType, configureStepType } from './option-types.js';
 
 /**
  * A configuration `section` to bind against the options type `optionsType`,
- * as its own manifest — merge it into a container's registrations with
+ * as its own manifest — merge it into your own manifest with
  * `add`. Adds a config-bind configure step and a change-token source
  * wired to the section's reload token, which is what makes the resulting
  * `IOptions<T>` reload-capable. Requires a prior `addOptions` for the same

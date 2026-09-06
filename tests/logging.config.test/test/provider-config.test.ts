@@ -39,7 +39,7 @@ describe('addConfig() — provider-configuration services', () => {
     }));
 
     const provider = Builder.withServices(() => builder.services).build();
-    const factory: ILoggerProviderConfigFactory = provider.resolve(FACTORY_TYPE);
+    const factory = provider.resolve(FACTORY_TYPE) as ILoggerProviderConfigFactory;
     const config = factory.getConfig(FAKE_PROVIDER_TYPE);
 
     expect(config.get('Format')).toBe('text');
@@ -55,7 +55,7 @@ describe('addConfig() — provider-configuration services', () => {
     builder.addConfig(config);
 
     const provider = Builder.withServices(() => builder.services).build();
-    const factory: ILoggerProviderConfigFactory = provider.resolve(FACTORY_TYPE);
+    const factory = provider.resolve(FACTORY_TYPE) as ILoggerProviderConfigFactory;
     const providerConfig = factory.getConfig(FAKE_PROVIDER_TYPE);
     expect(providerConfig.get('Format')).toBe('json');
 
@@ -76,11 +76,11 @@ describe('addConfig() — provider-configuration services', () => {
 
     const provider = Builder.withServices(() => builder.services).useAddon(standardLifetime()).build();
     const providerConfigType = loggerProviderConfigType(FAKE_PROVIDER_TYPE);
-    const providerConfig: ILoggerProviderConfig<unknown> = provider.resolve(providerConfigType);
+    const providerConfig = provider.resolve(providerConfigType) as ILoggerProviderConfig<unknown>;
 
     expect(providerConfig.config.get('Format')).toBe('json');
     // Singleton-tagged: the closing caches per closed type.
-    const providerConfigAgain: ILoggerProviderConfig<unknown> = provider.resolve(providerConfigType);
+    const providerConfigAgain = provider.resolve(providerConfigType) as ILoggerProviderConfig<unknown>;
     expect(providerConfigAgain).toBe(providerConfig);
   });
 
@@ -89,7 +89,7 @@ describe('addConfig() — provider-configuration services', () => {
     builder.addConfig();
 
     const provider = Builder.withServices(() => builder.services).build();
-    const factory: ILoggerProviderConfigFactory = provider.resolve(FACTORY_TYPE);
+    const factory = provider.resolve(FACTORY_TYPE) as ILoggerProviderConfigFactory;
     // No LoggingConfig registered yet: every provider section is empty.
     expect(factory.getConfig(FAKE_PROVIDER_TYPE).get('Format')).toBeUndefined();
   });

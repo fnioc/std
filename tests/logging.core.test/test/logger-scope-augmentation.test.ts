@@ -21,7 +21,7 @@ const ILOGGER_RECEIVER = Type.from('@rhombus-std/logging.core:ILogger<unknown>')
 function recordingLogger(): { logger: ILogger; scopes: unknown[]; } {
   const scopes: unknown[] = [];
   // Partial ILogger double — only the primitives this test exercises; cast past
-  // the merged wrapper members (§80) it never calls.
+  // the merged wrapper members it never calls.
   const logger = { log(): void {}, isEnabled(): boolean {
     return true;
   }, beginScope<TState>(state: TState): Disposable {
@@ -48,7 +48,7 @@ class DecoratedRecordingLogger implements ILogger {
 }
 // The `@augment` install lands the merged wrapper members on `ILogger`, so
 // `implements ILogger` now requires them on the class — the empty extends-merge
-// binds them body-free (§71/§80), exactly as the concrete loggers do.
+// binds them body-free, exactly as the concrete loggers do.
 interface DecoratedRecordingLogger extends ILogger {}
 augment(ILOGGER_RECEIVER)(DecoratedRecordingLogger);
 

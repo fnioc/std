@@ -52,7 +52,7 @@ export class HostBuilder implements IHostBuilder {
     return this;
   }
 
-  /** Adds services to the container. Additive across calls; the delegate RETURNS the manifest. */
+  /** Adds services to the manifest. Additive across calls; the delegate RETURNS the manifest. */
   public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;

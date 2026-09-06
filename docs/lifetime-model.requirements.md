@@ -10,7 +10,7 @@ scope: whatever grouping of asks it treats as sharing, or not sharing, a constru
 that lives no longer than the one ask that produced it is not a lifetime, and belongs to no
 model's vocabulary.
 
-There is no "does nothing" lifetime model to author. A container with no lifetime model installed
+There is no "does nothing" lifetime model to author. A provider with no lifetime model installed
 is already the case such a model would represent: nothing reads, checks, or acts on any
 registration's lifetime.
 
@@ -32,7 +32,7 @@ registration's lifetime.
    exist, how they nest, what marks one, or what a failure specific to one model looks like beyond
    requirement 2. Neither a caller nor another model may assume one model's shape from having seen
    another's.
-5. No lifetime model is required at all. A container with none installed behaves exactly as if a
+5. No lifetime model is required at all. A provider with none installed behaves exactly as if a
    model that interprets nothing were present.
 
 ### The unit of "single"
@@ -152,8 +152,8 @@ registration's lifetime.
   contradicts requirement 15 directly: captivity checking is each model's own, never a check
   shared between models.
 
-- **A `noopLifetimeAddon` that a container installs to get "no lifetime interpretation."**
+- **A `noopLifetimeAddon` that an application installs to get "no lifetime interpretation."**
   `tests/di.test/test/async-resolution.test.ts` builds its provider through
   `di.usingLifetimeModel(noopLifetimeAddon())`. This is exactly the model requirement 5 rules
-  out: a container with no model installed is already what such a model would be — nothing to
+  out: a provider with no model installed is already what such a model would be — nothing to
   author or install to reach that state.

@@ -2,7 +2,7 @@
 // `HostBuilder` and the modern `HostApplicationBuilder` compose identically.
 //
 // The internal `Host` is constructed with its dependencies passed DIRECTLY
-// (ctor args), not resolved from the container:
+// (ctor args), not resolved from the provider:
 //   - The framework singletons (`ApplicationLifetime`, the `LoggerFactory`, the
 //     resolved `HostOptions`) are constructed eagerly and registered as VALUES,
 //     so `IHost.services` hands the SAME instance back to a consumer that
@@ -13,7 +13,7 @@
 //   - Logging: the hosting layer OWNS one `LoggerFactory` and threads it,
 //     because a `LoggerFactory` built by `addLogging` does not yet inject the
 //     registered provider set. The registered providers are resolved off the
-//     built container and folded into the owned factory, so the host's own
+//     built provider and folded into the owned factory, so the host's own
 //     loggers -- and any composite logger already handed out -- light up.
 
 // Type-only: puts di.extras' declare-module sugar faces in the program with
@@ -174,7 +174,7 @@ export function populateFrameworkServices(services: Manifest<unknown>, context: 
 
 /**
  * Builds the provider and constructs the internal {@link Host}. Loads the
- * container's registered {@link ILoggerProvider}s into the owned
+ * provider's registered {@link ILoggerProvider}s into the owned
  * {@link LoggerFactory}, resolves the (possibly overridden) host lifetime, and
  * hands the internal host its dependencies directly.
  *
@@ -202,9 +202,9 @@ export function resolveHost(services: Manifest<unknown>, framework: FrameworkSer
   // `populateFrameworkServices`; the consumer resolving HOST_OPTIONS_TYPE sees
   // the same mutated instance).
   framework.hostOptions.initialize(config);
-  const configureSteps: Func<[HostOptions], void>[] = provider.resolve(
+  const configureSteps = provider.resolve(
     Type.array(HOST_OPTIONS_CONFIGURE_TYPE),
-  );
+  ) as Func<[HostOptions], void>[];
   for (const configureStep of configureSteps) {
     configureStep(framework.hostOptions);
   }

@@ -224,12 +224,12 @@ layer does, rather than port a separate options family — verified in detail ag
 source at the time. The reasoning rested on two premises: (1) the reference's typed-binding
 accessors (`IOptions`/`IOptionsSnapshot`/`IOptionsMonitor`) exist mainly to amortize reflection
 cost, which doesn't apply once TS types are erased at runtime and binding is already explicit; and
-(2) those three accessor shapes are really just three DI-container-lifetime answers (singleton /
-scoped / monitored), and this port was DI-free by design, so there was no container lifetime to
+(2) those three accessor shapes are really just three DI-lifetime-scope answers (singleton /
+scoped / monitored), and this port was DI-free by design, so there was no lifetime scope to
 integrate with.
 
 Premise (2) stopped holding once a real DI system (`di`/`ServiceManifest`) existed in this repo —
-services now do have container lifetimes to answer to, and per-scope config freshness turned out
+services now do have lifetime scopes to answer to, and per-scope config freshness turned out
 not to be free without an options-shaped accessor layer. The decision reversed, and
 `@rhombus-std/options` was built as its own family — see `docs/libraries/options.md` for what it
 actually does today. The reflection-amortization half of the original analysis (premise 1) still

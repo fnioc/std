@@ -628,7 +628,7 @@ scope, disposal, or validation content not already covered above are listed.
   site.
 - **`SafelyDisposeNestedProviderReferences`** — a transient that itself holds a reference to the
   `IServiceProvider` it was resolved from can be disposed directly by the caller without special
-  handling; unrelated to container-driven disposal ordering.
+  handling; unrelated to provider-driven disposal ordering.
 - **`ResolveKeyedServiceWithKeyedParameter_MissingRegistrationButWithUnkeyedService`** — an
   unkeyed registration is never used to satisfy a keyed dependency, even when no keyed
   registration exists (keyed and unkeyed lookups never cross), asserted through

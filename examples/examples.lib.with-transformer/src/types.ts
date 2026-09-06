@@ -30,7 +30,7 @@ import { typefor } from '@rhombus-std/primitives.extras';
  * greeting would invite exactly the wrong lookup.
  */
 export const EXAMPLE_TYPES = {
-  /** The report assembled from the whole container. */
+  /** The report assembled from the whole provider. */
   report: typefor<IServerReport>(),
   /**
    * The banner is registered ONLY in its promise wrapper, so the caller awaits

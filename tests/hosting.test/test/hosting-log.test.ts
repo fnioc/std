@@ -15,7 +15,7 @@ interface Entry {
 
 /** A recording `ILogger` whose enablement is switchable per test. */
 // Binds the augmented `ILogger` symbol onto the fake so the merged wrapper
-// methods (logInformation/…, §80) are declared on it; never called here.
+// methods (logInformation/…) are declared on it; never called here.
 interface RecordingLogger extends ILogger {}
 class RecordingLogger implements ILogger {
   public readonly entries: Entry[] = [];

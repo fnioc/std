@@ -1,9 +1,9 @@
-// THE ERROR TAXONOMY — every way a container can be wrong, and how to tell them
+// THE ERROR TAXONOMY — every way a service provider can be wrong, and how to tell them
 // apart.
 //
 // The scenario is a DEPLOYMENT SELF-CHECK: a small diagnostic a service runs
-// against its own container before it starts taking traffic, turning whatever
-// the container throws into a line an operator can act on. That is the honest
+// against its own service provider before it starts taking traffic, turning whatever
+// the provider throws into a line an operator can act on. That is the honest
 // reason to know these classes apart — an error you cannot branch on is an error
 // you can only log.
 //
@@ -15,17 +15,17 @@
 //
 // WHY THE WHOLE CLASSIFIER FITS IN A LIBRARY. `@rhombus-std/di.core` declares the
 // entire taxonomy: `DiError` and every leaf under it. `@rhombus-std/di`
-// re-exports those same classes, so the object a container throws and the class
+// re-exports those same classes, so the object a provider throws and the class
 // this file names are one runtime identity whichever specifier reached it —
 // which is what makes `instanceof` hold across the boundary. A library
 // references the abstractions package; only an entry point references the
-// engine. Reading what a container threw needs the abstractions, and the
+// engine. Reading what a provider threw needs the abstractions, and the
 // abstractions are what this package already has.
 //
 // WHAT A LIBRARY DOES NOT DO IS STAGE THEM, and that split is the chapter.
 // Naming `CycleError` costs an import. PROVOKING one costs a manifest, a
 // `build()` and a resolve — verbs that belong to whoever decided there should be
-// a container. So each example app stages the failures that need one and hands
+// a service provider. So each example app stages the failures that need one and hands
 // what it caught to `diagnose`.
 //
 // One staging IS here, and it is here to mark the taxonomy's EDGE rather than
@@ -56,9 +56,9 @@ const STORE_TYPE = Type.imported('IStore', 'selfcheck');
  * Reports whether a caught value belongs to the di taxonomy.
  *
  * The whole family extends `DiError`, so ONE `instanceof DiError` covers a
- * consumer's entire container lifecycle. A consumer that would rather not
+ * consumer's entire engine lifecycle. A consumer that would rather not
  * enumerate the classes catches the root instead and still knows it has caught a
- * container problem rather than swallowed a bug in its own code.
+ * engine problem rather than swallowed a bug in its own code.
  *
  * Deliberately does NOT print the message — the two example dialects spell some
  * types differently while the shapes are identical in both, so the two apps can
@@ -78,7 +78,7 @@ export function describeDiError(error: unknown): string {
  *
  * Every class below extends `DiError` directly, so no branch shadows another —
  * but the root test still goes LAST, because it would swallow all of them. The
- * last three arms are the honest catch-alls: a container failure this diagnostic
+ * last three arms are the honest catch-alls: an engine failure this diagnostic
  * has not been taught yet, an error that was never ours, and a thrown value that
  * was not an error at all.
  *
@@ -86,7 +86,7 @@ export function describeDiError(error: unknown): string {
  * table be COMPLETE inside a library. Provoking these takes a composition root;
  * see the header.
  *
- * @param error Whatever the container threw.
+ * @param error Whatever the engine threw.
  * @returns A single line naming the failure and what to do about it.
  */
 export function diagnose(error: unknown): string {
@@ -118,10 +118,10 @@ export function diagnose(error: unknown): string {
 
   // ── the three catch-alls ───────────────────────────────────────────────────
   if (error instanceof DiError) {
-    return `DiError (${error.name}) — the container is unhappy in a way this check has not been taught`;
+    return `DiError (${error.name}) — the engine is unhappy in a way this check has not been taught`;
   }
   if (error instanceof Error) {
-    return `${error.name} — not a container failure; this diagnostic would rethrow rather than guess`;
+    return `${error.name} — not an engine failure; this diagnostic would rethrow rather than guess`;
   }
   return 'not an error at all — this diagnostic would rethrow rather than guess';
 }
@@ -133,9 +133,9 @@ export function diagnose(error: unknown): string {
  *
  * One pairing serves every staging in this chapter wherever the staging lives:
  * provoke exactly one failure, hand what came back to {@link diagnose}, print one
- * line. It is exported because the stagings that need a container belong to a
- * composition root, and a root standing containers up should be writing
- * containers rather than re-deriving a report format.
+ * line. It is exported because the stagings that need a service provider belong to a
+ * composition root, and a root standing providers up should be writing
+ * providers rather than re-deriving a report format.
  *
  * @param what The staging's name, printed ahead of the diagnosis.
  * @param attempt The call expected to fail.
@@ -162,7 +162,7 @@ export function stagedFailure(what: string, attempt: () => unknown): string {
  * The refusal itself is the edge of the taxonomy rather than a member of it: a
  * key is a tag ON the service type, so a type that already carries one has
  * nowhere to put a second, and saying so is argument checking rather than a
- * container failure. `diagnose` reports it as such.
+ * engine failure. `diagnose` reports it as such.
  *
  * @param services The application's registration builder, left untouched.
  * @returns One line, and the chapter header belongs to the caller, who stages

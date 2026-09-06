@@ -1,4 +1,4 @@
-// The service types wiring the OptionsFactory pipeline through the container.
+// The service types wiring the OptionsFactory pipeline through the engine.
 // Each function composes the slot's real contract type from the options type; a
 // step is registered under `<slot>(optionsType)` and the assembly reads the
 // whole list back through `Type.array`. Deriving these deterministically is what

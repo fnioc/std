@@ -1,4 +1,4 @@
-// Behavior tests for the OptionsFactory pipeline (docs/decisions.md §4.5):
+// Behavior tests for the OptionsFactory pipeline:
 // make base -> configure steps -> post-configure steps -> validate -> return.
 
 import type { IValidateOptions } from '@rhombus-std/options/private/IValidateOptions';

@@ -11,7 +11,7 @@
 //
 // Every workspace dependency stays EXTERNAL so main.js imports the SAME
 // @rhombus-std/* runtime a published consumer would — the augmentation registry
-// and container identity are load-bearing and must not be forked by an inlined
+// and runtime identity are load-bearing and must not be forked by an inlined
 // copy. node/bun builtins are external under `target: "node"`.
 
 import { rmSync } from 'node:fs';

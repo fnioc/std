@@ -9,7 +9,7 @@ import { LoggerFactory, NullLogger, NullLoggerFactory } from '@rhombus-std/loggi
 import { type ILogger, type ILoggerFactory, LoggerFactoryAugmentations } from '@rhombus-std/logging.core';
 import { describe, expect, test } from 'bun:test';
 
-/** The method-form surface `@augment` installs at runtime (not statically typed, §36 + TS2430). */
+/** The method-form surface `@augment` installs at runtime (not statically typed, TS2430). */
 type WithTypeCreateLogger = { createLogger(type: abstract new(...args: never) => unknown): ILogger; };
 
 class OrderProcessor {}

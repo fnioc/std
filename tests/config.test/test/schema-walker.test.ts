@@ -16,7 +16,7 @@ const bool = Type.global('boolean');
 
 /** A member the configuration may leave out. */
 function optional(type: Type): Type {
-  return Type.union(type, Type.typeLiteral(undefined));
+  return Type.optional(type);
 }
 
 interface ServerSection {
@@ -115,7 +115,7 @@ describe('withSchema(...).build()', () => {
 
   test('optionality survives an alternative being dropped -- what is left is still a union', () => {
     const config = new ConfigBuilder().addInMemoryCollection({ Host: 'h' }).withSchema(
-      Type.object({ Host: str, Mode: Type.union(str, num, Type.typeLiteral(undefined)) }),
+      Type.object({ Host: str, Mode: Type.union(str, num, Type.undefinedLiteral) }),
     ).build();
 
     expect(config).toEqual({ Host: 'h', Mode: undefined });
@@ -144,7 +144,7 @@ describe('withSchema(...).build()', () => {
 
   test('a literal-union member survives being unioned with undefined -- optional, still literal-checked', () => {
     const schema = Type.object({
-      Mode: Type.union(Type.typeLiteral('fast'), Type.typeLiteral('slow'), Type.typeLiteral(undefined)),
+      Mode: Type.union(Type.typeLiteral('fast'), Type.typeLiteral('slow'), Type.undefinedLiteral),
     });
 
     const absent = new ConfigBuilder().addInMemoryCollection({}).withSchema(schema).build();

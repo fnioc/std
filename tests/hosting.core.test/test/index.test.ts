@@ -115,11 +115,11 @@ test('addHostedService registers many under one token; the collection resolves a
   }
 
   let manifest: Manifest<unknown> = Manifest.empty<unknown>();
-  manifest = manifest.add(getHostedServiceManifest(A, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
-  manifest = manifest.add(getHostedServiceManifest(B, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+  manifest = manifest.import(getHostedServiceManifest(A, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+  manifest = manifest.import(getHostedServiceManifest(B, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
 
   const provider = Builder.withServices(() => manifest).build();
-  const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
+  const services = provider.resolve(hostedServiceCollectionType()) as IHostedService[];
 
   expect(services).toHaveLength(2);
   for (const service of services) {
@@ -131,6 +131,6 @@ test('addHostedService registers many under one token; the collection resolves a
 test('the hosted-service collection resolves to an empty array when none are registered', () => {
   const manifest: Manifest<unknown> = Manifest.empty<unknown>();
   const provider = Builder.withServices(() => manifest).build();
-  const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
+  const services = provider.resolve(hostedServiceCollectionType()) as IHostedService[];
   expect(services).toEqual([]);
 });

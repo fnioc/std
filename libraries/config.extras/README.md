@@ -56,7 +56,7 @@ never a silent, un-coerced builder.
 | an array                             | `Type.global('Array', [<element schema>])`                                   |
 | nested object / inline interface     | a nested `Type.object({...})` (recurses)                                     |
 | a member whose type has its own name | kept as that name — `Type.imported('Database', 'app')`, not expanded         |
-| `foo?: T`                            | `T`'s schema unioned with `Type.typeLiteral(undefined)`                      |
+| `foo?: T`                            | `T`'s schema unioned with `Type.undefinedLiteral`                            |
 
 Expansion stops at a name: `interface App { db: Database }` lowers `db` to
 `Type.imported('Database', ...)`, not an expanded `Database`. Only a callable

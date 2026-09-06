@@ -1,5 +1,5 @@
 // White-box formatter tests — reach the internal built-in formatters through
-// the library's `internal/*` subpath (lowered per-file JS; docs §7/§40).
+// the library's `internal/*` subpath (lowered per-file JS).
 
 import { AnsiLogConsole } from '@rhombus-std/logging.console/private/AnsiLogConsole';
 import { ConsoleFormatterOptions } from '@rhombus-std/logging.console/private/ConsoleFormatterOptions';

@@ -17,10 +17,10 @@ test("addHostedService(factory) registers the factory's result under the hosted-
   let manifest: Manifest<unknown> = Manifest.empty<unknown>();
   const singleton = new Worker();
   // The factory form surfaces an already-constructed instance as a hosted service.
-  manifest = manifest.add(getHostedServiceManifest(() => singleton));
+  manifest = manifest.import(getHostedServiceManifest(() => singleton));
 
   const provider = Builder.withServices(() => manifest).build();
-  const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
+  const services = provider.resolve(hostedServiceCollectionType()) as IHostedService[];
 
   expect(services).toHaveLength(1);
   expect(services[0]).toBe(singleton);
@@ -39,13 +39,13 @@ test('addHostedService(factory) injects the live resolver so the factory can pul
   manifest = manifest.add(Type.from('test:Dependency'), Dependency, Type.ctor(Type.from('test:Dependency'), [[]]));
   // The factory receives the resolver -- the reference `Func<IServiceProvider, T>`
   // form used to promote a separately-registered service to a hosted service.
-  manifest = manifest.add(getHostedServiceManifest((resolver) => {
-    const dependency: Dependency = resolver.resolve(Type.from('test:Dependency'));
+  manifest = manifest.import(getHostedServiceManifest((resolver) => {
+    const dependency = resolver.resolve(Type.from('test:Dependency')) as Dependency;
     return dependency;
   }));
 
   const provider = Builder.withServices(() => manifest).build();
-  const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
+  const services = provider.resolve(hostedServiceCollectionType()) as IHostedService[];
 
   expect(services).toHaveLength(1);
   expect(services[0]).toBeInstanceOf(Dependency);
@@ -68,11 +68,11 @@ test('addHostedService(ctor) and addHostedService(factory) coexist under the sha
   }
 
   let manifest: Manifest<unknown> = Manifest.empty<unknown>();
-  manifest = manifest.add(getHostedServiceManifest(CtorWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
-  manifest = manifest.add(getHostedServiceManifest(() => new FactoryWorker()));
+  manifest = manifest.import(getHostedServiceManifest(CtorWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+  manifest = manifest.import(getHostedServiceManifest(() => new FactoryWorker()));
 
   const provider = Builder.withServices(() => manifest).build();
-  const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
+  const services = provider.resolve(hostedServiceCollectionType()) as IHostedService[];
 
   expect(services).toHaveLength(2);
   for (const service of services) {

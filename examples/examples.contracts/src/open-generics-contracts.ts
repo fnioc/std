@@ -4,7 +4,7 @@
 // Open generics answer a question every persistence layer eventually asks: you
 // have N entity types and you do NOT want N copies of the same repository
 // registration. So you register the repository ONCE against a template Type
-// carrying a HOLE — `IRepository<$1>` — and the container mints a closed
+// carrying a HOLE — `IRepository<$1>` — and the engine mints a closed
 // registration on demand for whichever closing you ask for
 // (`IRepository<User>`, `IRepository<Order>`, …). One registration, unbounded
 // closings.
@@ -76,7 +76,7 @@ export interface Seed<TEntity> {
  */
 export interface ITable<TEntity> {
   /**
-   * The rendered form of `TEntity`'s Type, delivered by the container itself:
+   * The rendered form of `TEntity`'s Type, delivered by the provider itself:
    * the implementation declares a `Typeof<TEntity>` parameter (or, hand-composed,
    * a `typeArg(1)` slot) and the engine substitutes the Type argument the
    * request was closed with. It is how a generic implementation learns WHICH

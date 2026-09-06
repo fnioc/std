@@ -16,14 +16,14 @@
 //
 // Everything else is identical, and deliberately so. Where a slot names a
 // service with no type to derive a `Type` from — a ctor arriving as a runtime
-// parameter, a slot the CALLER fills rather than the container — the explicit
+// parameter, a slot the CALLER fills rather than the provider — the explicit
 // form is the only form, in both dialects. That is the no-transformer-first
 // doctrine working as intended: the explicit form is the real API, and the sugar
 // only removes boilerplate where there is a type to remove it from.
 //
 // The scenario is one small library — a "greeting workshop" a consuming
 // application configures and then asks for a rendered greeting card. Nothing in
-// this file builds a container: `addGreetingWorkshop` registers into the manifest
+// this file builds a service provider: `addGreetingWorkshop` registers into the manifest
 // it was handed and gives it back, and the application decides what to do with
 // the result. That is the rule the whole package holds to, and it is why the only
 // di-family import below is `@rhombus-std/di.core`.
@@ -71,7 +71,7 @@ export class PlainStationery implements ICardStationery {
 }
 
 /**
- * The greeting this demo's containers are configured with. Local to the
+ * The greeting this demo's providers are configured with. Local to the
  * workshop rather than the package's own `FormalGreeting`, so that this file and
  * its without-transformer mirror render the same text and the two demos can be
  * diffed line for line.
@@ -86,10 +86,10 @@ export class WorkshopGreeting implements IGreeting {
 
 /**
  * One rendered greeting card. There is a fresh one per recipient, and one of its
- * constructor arguments — the recipient — is data the container has no way to
+ * constructor arguments — the recipient — is data the provider has no way to
  * know. It is registered anyway, because a registration is what carries the
  * DEPENDENCY SIGNATURE; a FACTORY slot then splits that signature in two, filling
- * the greeting slot from the container and leaving the recipient slot to whoever
+ * the greeting slot from the provider and leaving the recipient slot to whoever
  * calls the factory.
  */
 export class GreetingCard {
@@ -108,22 +108,22 @@ export class GreetingCard {
 
 /**
  * The library's one real service, and the model citizen of the package: it mints
- * {@link GreetingCard}s on demand WITHOUT ever holding the container.
+ * {@link GreetingCard}s on demand WITHOUT ever holding the provider.
  *
  * "On demand" is what usually pushes a class into taking the provider. A card is
- * built later, once per recipient, from data the container cannot know — so the
+ * built later, once per recipient, from data the provider cannot know — so the
  * obvious move is to keep the provider around and ask it for a card factory when
  * one is wanted. The obvious move is wrong, for a reason worth stating plainly: a
  * class holding the provider has dependencies its constructor does not declare.
  * Nobody reading the signature can see what it needs, no test can supply them
- * without standing up a container, and an eager whole-graph validation has
+ * without standing up a service provider, and an eager whole-graph validation has
  * nothing to check.
  *
  * The answer is to ask for the FACTORY as a parameter. `mintCard` is an ordinary
- * function the container hands over at construction — already partitioned, so
+ * function the provider hands over at construction — already partitioned, so
  * calling it supplies only the recipient — and `stationery` is an ordinary
  * optional parameter. Both are visible in the constructor, both arrive filled,
- * and the class never learns that a container exists.
+ * and the class never learns that a provider exists.
  *
  * {@link LocatorGreetingWorkshop} is this same class written the other way. It
  * produces identical cards and is registered right beside this one so the two can
@@ -132,7 +132,7 @@ export class GreetingCard {
  */
 export class GreetingWorkshop {
   /**
-   * The card factory, handed over ALREADY BUILT. The container worked the slot
+   * The card factory, handed over ALREADY BUILT. The engine worked the slot
    * plan out once, at registration — which slot the caller fills, which it
    * resolves — so there is nothing to memoise and no first-use branch. The lazy
    * `#mintCard ??= …` in {@link LocatorGreetingWorkshop} is there only because
@@ -155,7 +155,7 @@ export class GreetingWorkshop {
   /**
    * Whether the app registered its own stationery, or the library default is in
    * force. Settled at construction, because the answer arrived with the argument:
-   * there is no container to re-ask, and a singleton could not see a different
+   * there is no provider to re-ask, and a singleton could not see a different
    * answer later anyway.
    */
   public readonly stationeryIsOverridden: boolean;
@@ -167,7 +167,7 @@ export class GreetingWorkshop {
   }
 
   /**
-   * Renders a card for `name`. The greeting comes from the container, the
+   * Renders a card for `name`. The greeting comes from the provider, the
    * recipient from the caller — and which is which was decided by the factory
    * slot pinned by {@link addGreetingWorkshop}, not by anything this method does.
    */
@@ -178,17 +178,17 @@ export class GreetingWorkshop {
 
 /**
  * THE DISCOURAGED SHAPE, kept on purpose. {@link GreetingWorkshop} above is the
- * answer; this is what the same library looks like when it takes the container
+ * answer; this is what the same library looks like when it takes the provider
  * instead, registered beside the good one so an application can resolve both and
  * watch them print the identical card.
  *
  * Everything wrong with it is visible in the constructor: `resolver: IResolver`.
  * From that signature you cannot tell that this class needs a `GreetingCard`
  * registration and consults `ICardStationery` — you have to read the body. Every
- * other cost follows from that one fact: a test has to stand up a container
+ * other cost follows from that one fact: a test has to stand up a service provider
  * rather than pass two arguments, an eager whole-graph validation has no slots to
  * check, and a missing registration surfaces at the first `card()` call instead
- * of at construction. Reaching into the container for whatever you need is the
+ * of at construction. Reaching into the provider for whatever you need is the
  * service-locator pattern, and taking the provider as a dependency is how it gets
  * in.
  *
@@ -218,16 +218,16 @@ export class LocatorGreetingWorkshop {
     // `undefined` rather than a throw, which is the whole "use the app's
     // registration if there is one, otherwise build my default" idiom. The
     // good class declares the same thing as an optional parameter.
-    this.stationery = (resolver.resolve(Type.union(typefor<ICardStationery>(), Type.typeLiteral(undefined))) as ICardStationery | undefined)
+    this.stationery = (resolver.resolve(Type.optional(typefor<ICardStationery>())) as ICardStationery | undefined)
       ?? new PlainStationery();
   }
 
   /**
-   * A callable type IS the caller/container partition, spelled as a type: its
+   * A callable type IS the caller/provider partition, spelled as a type: its
    * argument types are the ones the CALLER supplies, and every other slot in the
-   * target's signature resolves from the container. It is the SAME partition
+   * target's signature resolves from the provider. It is the SAME partition
    * {@link GreetingWorkshop} states as a constructor parameter — the only
-   * difference is whether the container is asked for it or hands it over.
+   * difference is whether the provider is asked for it or hands it over.
    */
   public card(name: string): string {
     this.#mintCard ??= this.#resolver.resolve(
@@ -237,11 +237,11 @@ export class LocatorGreetingWorkshop {
   }
 
   /**
-   * Re-asks the container on every read, because a locator has no other way to
+   * Re-asks the provider on every read, because a locator has no other way to
    * know. The good class answers the same question from a field it was handed.
    */
   public get stationeryIsOverridden(): boolean {
-    return this.#resolver.resolve(Type.union(typefor<ICardStationery>(), Type.typeLiteral(undefined))) !== undefined;
+    return this.#resolver.resolve(Type.optional(typefor<ICardStationery>())) !== undefined;
   }
 }
 
@@ -349,7 +349,7 @@ export function addGreetingWorkshop(configure: (builder: IGreetingWorkshopBuilde
   holder.services = holder.services.add(typefor<GreetingWorkshop>(), GreetingWorkshop, typefor(GreetingWorkshop), 'singleton');
 
   // The counter-example, at its own derived service type so a caller can resolve
-  // both from one container and compare the cards. Its one argument is the
+  // both from one provider and compare the cards. Its one argument is the
   // intrinsic provider, which `typefor<IServiceProvider>()` derives directly —
   // "I want the provider" is plain DI rather than a special argument kind, which
   // is precisely why nothing stops a library doing it and why the comparison has

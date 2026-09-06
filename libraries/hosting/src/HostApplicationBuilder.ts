@@ -149,8 +149,8 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   }
 
   /**
-   * Configures the instantiated dependency container. This repo has a SINGLE
-   * container type, so this is a minimal no-op single-container hook: the
+   * Configures the instantiated dependency provider. This repo has a SINGLE
+   * provider type, so this is a minimal no-op single-provider hook: the
    * default build path is always used.
    */
   public configureContainer(_configure?: Action<[Manifest<unknown>]>): void {}

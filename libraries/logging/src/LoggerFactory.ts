@@ -167,12 +167,12 @@ export class LoggerFactory implements ILoggerFactory {
 
   /**
    * Creates a configured {@link ILoggerFactory} from an {@link ILoggingBuilder}
-   * delegate: builds the logging manifest, builds the container, and resolves
+   * delegate: builds the logging manifest, builds the provider, and resolves
    * the factory.
    */
   public static create(configure: Func<[ILoggingBuilder], void>): ILoggerFactory {
     const services = getLoggingManifest(configure);
-    return Builder.withServices(manifest => manifest.add(services))
+    return Builder.withServices(manifest => manifest.import(services))
       .build()
       .resolve<ILoggerFactory>();
   }

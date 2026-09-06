@@ -17,14 +17,14 @@ bun add @rhombus-std/caching.memory @rhombus-std/caching.core @rhombus-std/di.co
 `@rhombus-std/caching.core` and `@rhombus-std/di.core` are peer dependencies —
 install them alongside. `@rhombus-std/options` supplies `Options.of`, used
 below to wrap a `MemoryCacheOptions` value as the `IOptions<T>` `MemoryCache`
-expects. `@rhombus-std/di` is what turns a manifest into a resolvable
-container; `@rhombus-std/caching.memory` doesn't depend on it itself, since
+expects. `@rhombus-std/di` is what turns a manifest into a service provider;
+`@rhombus-std/caching.memory` doesn't depend on it itself, since
 `getMemoryCacheManifest`/`getDistributedMemoryCacheManifest` only ever hand
 you a manifest to merge.
 
 ## Usage
 
-The hand-written form — no container required:
+The hand-written form — no manifest required:
 
 ```ts
 import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
@@ -39,7 +39,7 @@ cache.remove('greeting');
 
 `MemoryCache` takes its options as an `IOptions<MemoryCacheOptions>` rather
 than a bare `MemoryCacheOptions` — `Options.of(value)` wraps a fixed value as
-a static, non-reactive one; a container-resolved `MemoryCache` gets a live,
+a static, non-reactive one; a provider-resolved `MemoryCache` gets a live,
 reload-reactive one instead (see below).
 
 `MemoryCache` implements the `IMemoryCache` contract from
@@ -47,7 +47,7 @@ reload-reactive one instead (see below).
 wrapper that package adds — `get`, `set`, `getOrCreate`, `setWithOptions`, and
 friends — works on it directly.
 
-### Registering it with a container
+### Registering it with a manifest
 
 `getMemoryCacheManifest` builds the registration as its own manifest,
 `Manifest<unknown>`: the cache itself registers at `'singleton'`, but a
@@ -153,7 +153,7 @@ for the optional logger it accepts, on
 and on its [`@rhombus-std/di.core`](../di.core/README.md) peer for the
 `Manifest` they build on.
 
-Install [`@rhombus-std/di`](../di/README.md) (or any container built on
+Install [`@rhombus-std/di`](../di/README.md) (or any engine built on
 `di.core`) to turn the merged manifest into a resolvable provider. If you
 separately merge in [`@rhombus-std/logging`](../logging/README.md)'s
 `getLoggingManifest`, the registered `MemoryCache` picks up the resolved

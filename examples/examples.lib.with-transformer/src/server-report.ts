@@ -1,7 +1,7 @@
 // The library's report factory — and the clearest illustration in the package of
 // what "a library never needs the provider" buys.
 //
-// Every input arrives as an ordinary parameter the container fills, so the
+// Every input arrives as an ordinary parameter the provider fills, so the
 // factory's dependencies are exactly what its signature says — which is what
 // makes it callable from a test with four plain arguments, checkable by an eager
 // whole-graph validation, and unable to grow a hidden dependency without editing
@@ -10,7 +10,7 @@
 // What each parameter is here to teach:
 //
 //   - `greetings: IGreeting[]` — COLLECTION injection. The Type derives as
-//     `Array<…:IGreeting>` and the container aggregates EVERY registration of
+//     `Array<…:IGreeting>` and the provider aggregates EVERY registration of
 //     `IGreeting`, so this one parameter picks up a greeting from BOTH example
 //     libraries. A collection slot is always satisfiable; with nothing registered
 //     it is simply empty.
@@ -22,7 +22,7 @@
 //     wrapper type arrived at the other way.
 //   - `health?: IHealthCheck` — the OPTIONAL dependency. An optional parameter
 //     lowers to a union slot — `{ union: ["…:IHealthCheck", { value: undefined
-//     }] }` — so the container tries the registration first and falls back to
+//     }] }` — so the provider tries the registration first and falls back to
 //     `undefined` when nothing is registered. That is the declared equivalent of
 //     a `resolve` probe, and it is the better half of the trade: absence
 //     becomes visible in the signature instead of buried in the body.
@@ -38,7 +38,7 @@ import type { IOptions } from '@rhombus-std/options';
 /**
  * Assembles an {@link IServerReport} from what it was handed. Every input arrives
  * as a parameter, so the report reflects whatever both libraries contributed
- * without this function ever asking the container a question.
+ * without this function ever asking the provider a question.
  *
  * @param greetings Every registered `IGreeting`, aggregated across both libraries.
  * @param server The live server options view; `.value` re-reads on each access.
@@ -61,7 +61,7 @@ export function makeServerReport(greetings: IGreeting[], server: IOptions<Server
   lines.push(`greeting policy excitement (static wrap): ${JSON.stringify(excitement)}`);
   // `health !== undefined` IS the probe. The union slot already answered "is one
   // registered?" — by injecting it or by injecting `undefined` — so there is
-  // nothing left to ask the container.
+  // nothing left to ask the provider.
   lines.push(`health check present: ${health !== undefined} (${health ? health.check() : 'n/a'})`);
 
   return { lines };

@@ -1,5 +1,5 @@
 // End-to-end: bind a configuration section into an IOptions<T>, resolve it from
-// the container, and observe reactivity across a reload -- the config -> Options
+// the provider, and observe reactivity across a reload -- the config -> Options
 // bridge (#40) exercised through its public authoring surface only.
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
@@ -29,10 +29,10 @@ describe('configure — section-to-options binding', () => {
 
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
-    services = services.add(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
+    services = services.import(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
 
     const provider = Builder.withServices(() => services).build();
-    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
+    const options = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE)) as IOptions<WidgetOptions>;
 
     expect(options.value).toEqual({ Url: 'http://first', Retries: '3' });
   });
@@ -42,10 +42,10 @@ describe('configure — section-to-options binding', () => {
 
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
-    services = services.add(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
+    services = services.import(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
 
     const provider = Builder.withServices(() => services).build();
-    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
+    const options = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE)) as IOptions<WidgetOptions>;
 
     const seen: WidgetOptions[] = [];
     const registration = options.subscribe!((value) => seen.push(value));
@@ -72,11 +72,11 @@ describe('configure — section-to-options binding', () => {
 
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
-    services = services.add(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
-    services = services.add(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Extra')));
+    services = services.import(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
+    services = services.import(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Extra')));
 
     const provider = Builder.withServices(() => services).build();
-    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
+    const options = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE)) as IOptions<WidgetOptions>;
 
     expect(options.value).toEqual({ Url: 'http://a', Retries: '5' });
   });
@@ -88,7 +88,7 @@ describe('addOptions — no configured source', () => {
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: 'default' }));
 
     const provider = Builder.withServices(() => services).build();
-    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
+    const options = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE)) as IOptions<WidgetOptions>;
 
     expect(options.value).toEqual({ Url: 'default' });
     expect(options.subscribe).toBeUndefined();

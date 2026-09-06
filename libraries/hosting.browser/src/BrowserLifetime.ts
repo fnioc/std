@@ -26,7 +26,7 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
   /**
    * @param pageLifecycleEvents The single DOM-listening component; this lifetime
    *   consumes it as its event source. It is registered as an unowned value the
-   *   container never disposes, so this lifetime — its host-scoped consumer —
+   *   provider never disposes, so this lifetime — its host-scoped consumer —
    *   disposes it on `stop`/dispose, preventing a listener leak across host
    *   cycles over a shared document.
    */
@@ -93,7 +93,7 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
     this.#unsubscribeRestore?.();
     this.#unsubscribeRestore = undefined;
     // The bridge is the single DOM-listening component, registered as an unowned
-    // value the container never disposes — its teardown rides this lifetime's.
+    // value the provider never disposes — its teardown rides this lifetime's.
     this.#pageLifecycleEvents[Symbol.dispose]();
   }
 }
