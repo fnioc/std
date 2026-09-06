@@ -2631,7 +2631,7 @@ a companion type-node parameter with a mutually exclusive `kind`.
 
 ## Session — live review of the ask surface, 2026-09-05/06 (owner rulings; queue of record)
 
-Rulings, all landed in the tree (uncommitted until the merge commit split below):
+Rulings, all landed: six signed commits replayed onto main as PR #369 (auto-merge, squash by the queue); the branch and this worktree go once it merges.
 
 1. Aggregate `try` twins deleted; explicit forms return `unknown`; callable `try` twins throw
    from inside the call (reference parity: `GetService`/`GetRequiredService` both throw on a
@@ -2668,8 +2668,7 @@ Rulings, all landed in the tree (uncommitted until the merge commit split below)
    error-never-exception rule, now lives in CLAUDE.md); `docs/decisions.v2.md` swept 149 → 20
    entries with delete-by-default (§162 removed with `applyAugmentations`).
 9. Review ladder torn down: #366 closed, `IServiceManifest-approved` deleted. #365 #367 #362 #330
-   close via the merge PR body. Owner: "just get it merged" — this branch lands on main; the
-   branch and this worktree go after the merge.
+   close via PR #369's body. Owner: "just get it merged" — done as PR #369.
 
 FOR THE OWNER (parked, his call): gospel conflict — `decisions.user.md` U4 says the tag's inner
 type "is unconstrained"; the code and v2 §150 say `TagType.type: Exclude<Type, TagType>`. Only he
