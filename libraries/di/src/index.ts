@@ -7,5 +7,6 @@ export type { Middleware } from '@rhombus-std/di.core';
 
 export { ScopeValidationError, standardLifetime, validateScopes } from './addons/standard-lifetime/index.js';
 export { taggedLifetime } from './addons/tagged-lifetime/index.js';
+export { validateAddresses } from './addons/validate-addresses.js';
 export { validateBuildability, validateUniversalAddresses } from './addons/validation.js';
 export { Builder } from './di.js';

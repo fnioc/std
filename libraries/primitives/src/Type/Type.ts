@@ -1,8 +1,10 @@
 import { memo } from '@rhombus-toolkit/once';
 import type { DistributiveOmit } from '@rhombus-toolkit/types';
+import { TypeValidationError } from '../TypeValidationError.js';
 import * as factory from './factory/factories.js';
 import type { LIST_KINDS, ListName } from './grammar.js';
 import { parseLiteral } from './parse/parser.js';
+import { DiagnosticsVisitor } from './visitor/DiagnosticsVisitor.js';
 import { IsOpenVisitor } from './visitor/IsOpenVisitor.js';
 import { MatchVisitor } from './visitor/MatchVisitor.js';
 import { stringifyType } from './visitor/StringifyVisitor.js';
@@ -140,6 +142,34 @@ export interface TypeLiteralType<Value extends LiteralValue = LiteralValue> exte
 
 export interface UnionType extends TypeBase<'union'> {
   readonly members: readonly Type[];
+}
+
+/**
+ * One thing a type may be checked for, asked of a single node.
+ *
+ * @remarks
+ * A rule reads the node it is handed and that node's own children; the walk to the children
+ * themselves belongs to {@link Type.getDiagnostics}, which offers every node in turn.
+ */
+export interface TypeRule {
+  /** What identifies this rule wherever it is reported or suppressed. */
+  readonly id: string;
+  /** How hard the rule pushes back. */
+  readonly level: 'warning' | 'error';
+  /** Why `node` is suspect, or `undefined` when it is not. */
+  check(node: Type): string | undefined;
+}
+
+/** One rule's objection to one node. */
+export interface TypeDiagnostic {
+  /** The rule that objected. */
+  readonly id: string;
+  /** How hard that rule pushes back. */
+  readonly level: 'warning' | 'error';
+  /** The node it objected to. */
+  readonly type: Type;
+  /** Why that node is suspect. */
+  readonly message: string;
 }
 
 // #endregion
@@ -596,6 +626,37 @@ export namespace Type {
       return slot.members as readonly (TupleType | ListType)[];
     }
     return [slot];
+  }
+
+  /**
+   * What `rules` object to anywhere in `type` — every node in pre-order, the rules in the order
+   * given, and nothing raised.
+   *
+   * @remarks
+   * A node standing in several positions is one interned node, so it is offered once and reports
+   * once however many positions reach it.
+   */
+  export function getDiagnostics(type: Type, rules: Iterable<TypeRule>): TypeDiagnostic[] {
+    const visitor = new DiagnosticsVisitor(rules);
+    visitor.visit(type);
+    return visitor.diagnostics;
+  }
+
+  /**
+   * Runs `rules` over `type` and raises what stops it — an error-level objection always, a
+   * warning-level one when `warningsAsErrors` says warnings stop too.
+   *
+   * @throws AggregateError - carrying one {@link TypeValidationError} per stopping diagnostic.
+   */
+  export function validate(type: Type, rules: Iterable<TypeRule>, warningsAsErrors = false): void {
+    const stopping = Type.getDiagnostics(type, rules).filter(diagnostic => warningsAsErrors || diagnostic.level === 'error');
+    if (!stopping.length) {
+      return;
+    }
+    throw new AggregateError(
+      stopping.map(diagnostic => new TypeValidationError(diagnostic)),
+      `${Type.stringify(type)} fails validation (${stopping.length})`,
+    );
   }
 
   // #endregion

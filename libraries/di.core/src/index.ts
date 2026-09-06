@@ -2,6 +2,7 @@
 import './single-instance-guard';
 
 export type * from './Addon';
+export * from './address-rules';
 export type * from './Behavior';
 export * from './brands';
 export type { RegistrationBuilderFor } from './builder';
