@@ -2629,6 +2629,83 @@ a companion type-node parameter with a mutually exclusive `kind`.
   collapse the node path already does, so `boolean` spells `Type.global('boolean')` everywhere; one
   test flips from refusal to address) or "leave".
 
+## Address validation addon — LANDED 2026-09-06 (PR #373, `44ea26c2`); three findings parked
+
+Shipped: `Type.getDiagnostics`/`Type.validate`/`TypeRule`/`TypeDiagnostic`/`TypeValidationError`
+(primitives), `addressRules` DI1001–DI1014 with `registration`/`ask`/`byId` (di.core),
+`validateAddresses({ registration, ask, warningsAsErrors, suppress })` (di, exported, opt-in). Siblings
+landed first: #371 (a tag may wrap any type), #372 (`AggregateError` of leaves,
+`ManifestValidationError` gone).
+
+FOR THE OWNER'S WORD (lane findings, none acted on):
+
+- (g) DEFAULT ROSTER not done: `Builder`/`DefaultContext.build()` composes only the caller's addons
+  plus the engine middleware — there is no default-roster mechanism to add to (`di.ts:72,100,106`).
+  And a default install would be unobservable today: every address rule is a warning, warnings
+  never throw unless `warningsAsErrors`, and `Type.validate` has no sink for non-stopping
+  diagnostics. Two words needed: the mechanism (seed `DefaultContext` with `validateAddresses()`
+  before the caller's addons?) and the warning sink (recommended: the addon registers a resolvable
+  diagnostics report, e.g. an `IAddressDiagnostics` service holding what the last build/asks
+  produced; alternatives: a logger hook, or "warnings exist only to be flipped by
+  `warningsAsErrors`", which makes a default install pointless).
+- (h) Rules DI1012–DI1014 are meant for the WHOLE address (an ask for the bare undefined literal, a
+  registration under a union/literal) but fire at nested nodes too, because `TypeRule.check(node)`
+  cannot tell the root from a child — so `Promise<X | undefined>` (listed FINE) trips DI1013/DI1014
+  inside. Fix needs a position on the check (recommended: `check(node, parent?: Type)`, root =
+  no parent; a one-parameter addition to the primitives interface — signoff).
+- (i) Open addresses skip the matcher-based rules (DI1005–DI1008 guard with `Type.isClosed`
+  because `Type.isPromise`/`extractMatchedGenerics` throw on a hole) — false negatives only;
+  acceptable or not, his call.
+
+1. In primitives: `Type.getDiagnostics(type, rules: Iterable<TypeRule>): TypeDiagnostic[]` (ONE
+   walker over `Type.Visitor`, rule-agnostic, never throws) and `Type.validate(type, rules,
+   warningsAsErrors = false): void`, which throws `TypeValidationError` (new class, primitives-owned,
+   carries the diagnostics, message id-first) — the only error type the validator owns. `TypeRule = { id, level:
+   'warning' | 'error', check(node) }` — a predicate over one node, never its own traversal.
+   Primitives owns NO rules and no rulesets (every candidate rule gets its meaning from di;
+   `Type.promise` already collapses the one language-level case). `Type.validate.<ruleset>`
+   is the home for a primitives-owned ruleset if one ever exists.
+2. di.core exports each rule by name with a stable id (`DI1xxx`, never reused; the numbers are
+   `TypeValidationError`'s language only — no other error carries one) and `addressRules = {
+   recommended, strict, byId }` as plain lists of those rules.
+3. di addon `validateAddresses({ preset, warningsAsErrors = false, suppress: Iterable<id> })`,
+   beside `validateBuildability`/`validateScopes`: filters the preset by `suppress` and calls
+   `Type.validate(address, active, warningsAsErrors)` for every registration address at `build()`
+   and every ask address at the request door; the error that escapes is `TypeValidationError`.
+4. Rules (owner-shaped): any `Type` is registrable and matched by identity. Open/universal
+   addresses are NOT the validator's: not suppressable, refused by the registration factory, the
+   planner and `validateUniversalAddresses` as today, so no number. Every numbered rule is a
+   WARNING ("explicit match only, probably a misspelling"; `warningsAsErrors` makes it stop): tag(tag) · tag(X|undefined) · tag(literal) · tag(X, '')
+   · Promise<Promise<X>> · Promise<AsyncIterable<X>> · Promise<literal> · Array/Iterable/
+   AsyncIterable<X|undefined> (phantom `undefined` element) · union with tag(X) beside X ·
+   union of two aggregates · Promise<X> | X · the promise rules through a callable's return slot
+   · a registration under a union/optional address · a registration under a literal address ·
+   an ask for the bare undefined literal. FINE, documented, no check: tag(Array<X>) beside
+   Array<tag(X)>; tag(Promise<X>) beside Promise<tag(X)> (explicit match beside the boundary
+   spelling — RULED as-is); tag over generic/Func/Ctor; AsyncIterable<Promise<X>>;
+   Array<Promise<X>> beside Promise<Array<X>>; Promise<X|undefined>; nested aggregates; a
+   registration under an aggregate address. Not this addon's: intersections (planner
+   diagnostic), thenable values, cycles, captivity.
+5. `withKey`'s tagged-input refusal becomes warning DI1002 once the addon exists.
+
+RULED (owner 2026-09-06): (f) validation reports ONE refusal per registration, first fault wins (a
+captive refusal pre-empts a missing dependency on the same registration; the next build shows the
+next fault) — the two-`ScopeValidationError` test is the contract. (e) NO ids on the graph validators — the numbers are
+`TypeValidationError`'s own language and nonsense anywhere else; `validateScopes`/
+`validateBuildability` keep their unnumbered leaves. Earlier words, now ruled: (c) aggregation shape — leaf errors belong
+to the family, several at once are the platform's `AggregateError`: `ManifestValidationError` is
+deleted (every leaf already names its address) and the validation addons throw
+`AggregateError(errors)`; `Type.validate` owns ONE leaf, `TypeValidationError { id, level, type,
+message }`, and throws an `AggregateError` of them — RULED (owner `/go`, 2026-09-06); the di half
+(delete `ManifestValidationError`, addons throw `AggregateError`) is a lane now; the primitives half
+lands with the validator. (d) RULED default: `validateAddresses()` is in the middleware chain di's `Builder` composes by
+default. (a) RULED drop: no tag guard in primitives — the
+`TagType.type: Exclude<Type, TagType>` constraint and the
+`factory.tag` throw from primitives, keeping the rule only in di (`withKey`, then the addon) —
+recommended, "Type stands on its own"; the U4 clause reverts to "unconstrained" (its edit to
+`Exclude<…>` sits uncommitted in the main checkout pending this). (b) delete the two foreign
+caches on tmpfs (`/tmp/di-cache-backup` 2.7G, `/tmp/claude-1000/gocache` 2.2G).
+
 ## Session — live review of the ask surface, 2026-09-05/06 (owner rulings; queue of record)
 
 Rulings, all landed: six signed commits replayed onto main as PR #369 (auto-merge, squash by the queue); the branch and this worktree go once it merges.
