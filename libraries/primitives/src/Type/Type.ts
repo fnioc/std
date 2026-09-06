@@ -497,12 +497,23 @@ export namespace Type {
 
   /** Does the type admit `undefined` — the `undefined` literal itself, or a union carrying it? */
   export function isOptional(type: Type): boolean {
-    return type === Type.typeLiteral(undefined) || type.kind === 'union' && type.members.includes(Type.typeLiteral(undefined));
+    return type === Type.undefinedLiteral || type.kind === 'union' && type.members.includes(Type.undefinedLiteral);
   }
+
+  /** `type` beside the `undefined` literal — `type` itself when it already admits one. */
+  export function optional(type: Type): Type {
+    if (Type.isOptional(type)) {
+      return type;
+    }
+    return Type.union(type, Type.undefinedLiteral) as UnionType;
+  }
+
+  /** The `undefined` literal. */
+  export const undefinedLiteral = Type.typeLiteral(undefined);
 
   const PROMISE_PATTERN = Type.global('Promise', [Type.generic('S')]);
 
-  /** Is `type` a `Promise<…>` — the one spelling the container reads as deferred delivery? */
+  /** Is `type` a `Promise<…>` — the one spelling the engine reads as deferred delivery? */
   export function isPromise(type: Type): boolean {
     return Type.isMatch(PROMISE_PATTERN, type);
   }

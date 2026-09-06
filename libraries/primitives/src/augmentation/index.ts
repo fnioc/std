@@ -4,6 +4,5 @@
 // subscriber lists, the installer's guards — is reachable only from inside it,
 // so a later addition here is a deliberate act rather than an `export *` away.
 
-export { applyAugmentations } from './apply-augmentations';
 export type { AugmentationSet, MergeStrategies, MergeStrategy } from './apply-augmentations';
 export { augment, registerAugmentations } from './registry';

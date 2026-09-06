@@ -14,7 +14,7 @@ import type { ObjectType } from '@rhombus-std/primitives';
  * opened up in place.
  *
  * An OPTIONAL member is its own type unioned with `undefined`
- * (`Type.union(inner, Type.typeLiteral(undefined))`), the one spelling the union
+ * (`Type.optional(inner)`), the one spelling the union
  * grammar keeps intact: nothing subsumes a nullish member.
  *
  * Two types that expand to the same structure yield the SAME node, since a
@@ -32,7 +32,7 @@ import type { ObjectType } from '@rhombus-std/primitives';
  * // Type.object({
  * //   host: Type.global('string'),
  * //   port: Type.global('number'),
- * //   ssl: Type.union(Type.global('boolean'), Type.typeLiteral(undefined)),
+ * //   ssl: Type.optional(Type.global('boolean')),
  * // })
  * ```
  */

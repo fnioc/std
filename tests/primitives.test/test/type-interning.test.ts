@@ -93,7 +93,7 @@ describe('canonical form', () => {
   });
 
   test('nothing subsumes a nullish member, so an optional keeps its fallback', () => {
-    const optional = Type.union(A, Type.typeLiteral(undefined));
+    const optional = Type.optional(A);
     expect(optional).not.toBe(A);
     expect(Type.stringify(optional)).toBe('app:A | undefined');
   });
@@ -302,6 +302,6 @@ describe('Type.adopt names a malformed literal', () => {
   });
 
   test("a literal's own undefined value is a value, not an absence", () => {
-    expect(Type.adopt({ kind: 'literal', value: undefined })).toBe(Type.typeLiteral(undefined));
+    expect(Type.adopt({ kind: 'literal', value: undefined })).toBe(Type.undefinedLiteral);
   });
 });

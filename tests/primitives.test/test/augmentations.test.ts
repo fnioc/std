@@ -1,20 +1,22 @@
-// Behaviour tests for the dual-export augmentation infrastructure
-// (@rhombus-std/primitives/augmentations): `applyAugmentations` mounts a
-// `this`-based method verbatim onto a prototype, and the method form must be
-// behaviour-equivalent to calling the object-literal member directly.
+// Behaviour tests for the augmentation infrastructure
+// (@rhombus-std/primitives/augmentations): `registerAugmentations` registers a
+// `this`-based method set against a receiver type, and `@augment` installs the
+// set onto a class's prototype. The method form must be behaviour-equivalent to
+// calling the object-literal member directly.
 
-import { applyAugmentations, type AugmentationSet } from '@rhombus-std/primitives';
+import { augment, type AugmentationSet, registerAugmentations, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-class Box {
-  value = 0;
-}
-
-// The method form is typed by declaration merging (class + interface in the same
-// file), exactly as the real packages type it via `declare module`.
 interface Box {
   add(n: number): Box;
   read(): number;
+}
+
+const BoxType = Type.from('@rhombus-std/primitives.test:Box');
+
+@augment(BoxType)
+class Box {
+  value = 0;
 }
 
 const BoxExtensions = { add(this: Box, n: number): Box {
@@ -24,11 +26,11 @@ const BoxExtensions = { add(this: Box, n: number): Box {
   return this.value;
 } } satisfies AugmentationSet<Box>;
 
-// Install once for the whole file (mirrors how a library author installs at
+// Register once for the whole file (mirrors how a library author registers at
 // module-import time).
-applyAugmentations(Box, BoxExtensions);
+registerAugmentations<Box>(BoxType, BoxExtensions);
 
-describe('applyAugmentations', () => {
+describe('registerAugmentations + @augment', () => {
   test('forwards the receiver as the first argument', () => {
     const box = new Box();
     box.add(5);
