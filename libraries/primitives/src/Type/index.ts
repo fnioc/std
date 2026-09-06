@@ -4,4 +4,4 @@
 
 export { Type } from './Type.js';
 export type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, LiteralValue, NamedType, ObjectType,
-  TagType, TupleType, TypeIdentifier, TypeLiteralType, UnionType } from './Type.js';
+  TagType, TupleType, TypeDiagnostic, TypeIdentifier, TypeLiteralType, TypeRule, UnionType } from './Type.js';
